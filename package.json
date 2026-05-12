@@ -1,0 +1,13 @@
+{
+  "name": "neuraltranslate-fullstack",
+  "version": "1.0.0",
+  "description": "Full-stack Neural Translation Suite",
+  "scripts": {
+    "start:backend": "cd backend && npm run start:dev",
+    "start:frontend": "cd frontend && npx serve .",
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
