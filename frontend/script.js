@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // API Configuration - Works for both local and production
     const API_BASE_URL = window.location.hostname === 'localhost' 
         ? 'http://localhost:5001' 
-        : 'https://language-translator-backend.onrender.com';
+        : 'https://language-translator-backend-5ram.onrender.com';
     
     const sourceText = document.getElementById('source-text');
     const targetText = document.getElementById('target-text');
