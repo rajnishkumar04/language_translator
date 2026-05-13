@@ -25,4 +25,4 @@ npx serve .
 ```
 
 ---
-*Built with precision by Antigravity.*
+*made by rajnish kumar*

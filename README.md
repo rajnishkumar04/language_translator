@@ -27,4 +27,4 @@ npm run dev
 - **Terminal History**: On-screen log of all processed data.
 
 ---
-*Developed by Antigravity.*
+*made by rajnish kumar*
