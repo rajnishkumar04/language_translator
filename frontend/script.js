@@ -237,15 +237,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sourceText.value.length > 2) {
                 translate();
             }
-        }, 1500); // 1.5s delay after typing
+        }, 600); // 600ms delay after typing for fast response
     }
 
     translateBtn.addEventListener('click', translate);
 
     // Terminal History Logs
-    let translationHistory = JSON.parse(localStorage.getItem('translationHistory')) || [];
-    // Initialize session logs with persistent translation history
-    let allSessionLogs = [...translationHistory];
+    let translationHistory = [];
+    let allSessionLogs = [];
+
+    async function loadHistory() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/history`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                translationHistory = data;
+                // Merge persistent history logs with transient system logs
+                const systemLogs = allSessionLogs.filter(log => !(['en-GB', 'hi-IN', 'de-DE'].includes(log.sLang) && ['en-GB', 'hi-IN', 'de-DE'].includes(log.tLang)));
+                allSessionLogs = [...translationHistory, ...systemLogs];
+                renderHistory();
+            }
+        } catch (err) {
+            console.error("Failed to load history from backend:", err);
+            // LocalStorage fallback
+            translationHistory = JSON.parse(localStorage.getItem('translationHistory')) || [];
+            const systemLogs = allSessionLogs.filter(log => !(['en-GB', 'hi-IN', 'de-DE'].includes(log.sLang) && ['en-GB', 'hi-IN', 'de-DE'].includes(log.tLang)));
+            allSessionLogs = [...translationHistory, ...systemLogs];
+            renderHistory();
+        }
+    }
 
     function renderHistory() {
         const historyContainer = document.getElementById('history-list');
@@ -462,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initParticles();
-    renderHistory();
+    loadHistory();
     systemCheck();
 
     // Global Error Capture for Terminal

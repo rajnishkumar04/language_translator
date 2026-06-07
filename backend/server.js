@@ -3,6 +3,11 @@ const cors = require('cors');
 const axios = require('axios');
 require('dotenv').config();
 
+const db = require('./db/db');
+db.initDB();
+
+const translationCache = new Map();
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -17,6 +22,16 @@ app.post('/api/translate', async (req, res) => {
         return res.status(400).json({ error: 'Missing required parameters' });
     }
 
+    const cacheKey = `${sourceLang}:${targetLang}:${text.toLowerCase().trim()}`;
+    if (translationCache.has(cacheKey)) {
+        const cachedResult = translationCache.get(cacheKey);
+        console.log(`[Cache Hit] Serving translation from cache: "${cachedResult.substring(0, 20)}..."`);
+        db.saveHistory(text, cachedResult, sourceLang, targetLang).catch(err => {
+            console.error('[Database Error] Failed to save history in background:', err.message);
+        });
+        return res.json({ translatedText: cachedResult });
+    }
+
     console.log(`[NeuralCore] Translating: "${text.substring(0, 20)}..." from ${sourceLang} to ${targetLang}`);
 
     try {
@@ -27,6 +42,15 @@ app.post('/api/translate', async (req, res) => {
         if (response.data && response.data.responseData) {
             const translatedText = response.data.responseData.translatedText;
             console.log(`[Success] Translation complete: ${translatedText.substring(0, 20)}...`);
+            
+            // Cache the translation result
+            translationCache.set(cacheKey, translatedText);
+            
+            // Save to history asynchronously in background
+            db.saveHistory(text, translatedText, sourceLang, targetLang).catch(err => {
+                console.error('[Database Error] Failed to save history in background:', err.message);
+            });
+
             res.json({ translatedText });
         } else if (response.data && response.data.responseStatus !== 200) {
             console.error('[API Error]', response.data.responseDetails);
@@ -53,6 +77,17 @@ app.post('/api/translate', async (req, res) => {
         } else {
             res.status(500).json({ error: 'Neural processing failure. Check connection.' });
         }
+    }
+});
+
+// History Log Retrieval Endpoint
+app.get('/api/history', async (req, res) => {
+    try {
+        const history = await db.getHistory();
+        res.json(history);
+    } catch (error) {
+        console.error('[History Retrieve Error]', error.message);
+        res.status(500).json({ error: 'Failed to retrieve translation history' });
     }
 });
 
