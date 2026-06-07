@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const translateBtn = document.getElementById('translate-btn');
     const swapBtn = document.getElementById('swap-langs');
     const charCountDisplay = document.getElementById('char-count');
+    const translationStatus = document.getElementById('translation-status');
     const statusText = document.querySelector('.status-text');
     const statusIndicator = document.querySelector('.status-indicator');
     
@@ -100,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         targetText.innerHTML = '<span class="cursor-blink">_</span>';
         charCountDisplay.textContent = '0';
         updateSystemStatus('CORE ACTIVE', '#00f2ff');
+        translationStatus.textContent = 'IDLE';
+        translationStatus.style.color = 'var(--text-dim)';
     });
 
     // Swap Languages with Animation
@@ -158,6 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isProcessing = true;
 
         updateSystemStatus('NEURAL PROCESSING...', '#bc13fe');
+        translationStatus.textContent = 'PROCESSING...';
+        translationStatus.style.color = '#bc13fe';
         translateBtn.style.opacity = '0.5';
 
         try {
@@ -178,6 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const translated = data.translatedText;
                 typewriterEffect(translated);
                 updateSystemStatus('DATA SYNCED', '#10b981');
+                translationStatus.textContent = 'COMPLETE';
+                translationStatus.style.color = '#10b981';
                 
                 // Save to Terminal History
                 addLogEntry(text, translated, sourceLang.value, targetLang.value);
@@ -191,12 +198,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isProcessing) updateSystemStatus('CORE ACTIVE', '#00f2ff');
                 }, 2000);
             } else {
-                throw new Error("Neural link failed");
+                throw new Error(data.error || "Neural link failed");
             }
         } catch (error) {
             console.error("Neural Error:", error);
             updateSystemStatus('SYSTEM ERROR', '#ff003c');
-            targetText.innerHTML = '<span style="color: #ff003c">ERROR_PROCESS_FAILED</span>';
+            translationStatus.textContent = 'ERROR';
+            translationStatus.style.color = '#ff003c';
+            targetText.innerHTML = `<span style="color: #ff003c">ERROR: ${error.message.toUpperCase()}</span>`;
         } finally {
             isProcessing = false;
             translateBtn.style.opacity = '1';
@@ -217,31 +226,43 @@ document.addEventListener('DOMContentLoaded', () => {
     translateBtn.addEventListener('click', translate);
 
     // Terminal History Logs
-    function addLogEntry(source, target, sLang, tLang) {
+    let translationHistory = JSON.parse(localStorage.getItem('translationHistory')) || [];
+
+    function renderHistory() {
         const historyContainer = document.getElementById('history-list');
+        historyContainer.innerHTML = '';
+        
+        translationHistory.forEach(log => {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="timestamp">[${log.timestamp}]</span>
+                <span class="cmd">${log.sLang.split('-')[0]}>${log.tLang.split('-')[0]}</span>
+                <span class="content">${log.source.substring(0, 20)}${log.source.length > 20 ? '...' : ''}</span>
+            `;
+            
+            entry.onclick = () => {
+                sourceText.value = log.source;
+                sourceLang.value = log.sLang;
+                targetLang.value = log.tLang;
+                translate();
+            };
+
+            historyContainer.prepend(entry);
+        });
+    }
+
+    function addLogEntry(source, target, sLang, tLang) {
         const timestamp = new Date().toLocaleTimeString([], { hour12: false });
         
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = `
-            <span class="timestamp">[${timestamp}]</span>
-            <span class="cmd">${sLang.split('-')[0]}>${tLang.split('-')[0]}</span>
-            <span class="content">${source.substring(0, 20)}${source.length > 20 ? '...' : ''}</span>
-        `;
+        translationHistory.push({ timestamp, source, target, sLang, tLang });
         
-        entry.onclick = () => {
-            sourceText.value = source;
-            sourceLang.value = sLang;
-            targetLang.value = tLang;
-            translate();
-        };
-
-        historyContainer.prepend(entry);
-        
-        // Keep only last 10 logs
-        if (historyContainer.children.length > 10) {
-            historyContainer.removeChild(historyContainer.lastChild);
+        if (translationHistory.length > 10) {
+            translationHistory.shift();
         }
+        
+        localStorage.setItem('translationHistory', JSON.stringify(translationHistory));
+        renderHistory();
     }
 
     // Audio Stream (TTS) with Voice Selection

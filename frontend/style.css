@@ -470,6 +470,15 @@ textarea, .output-display {
     margin-bottom: 0.75rem;
     display: flex;
     gap: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.log-entry:hover {
+    background: rgba(0, 242, 255, 0.08);
+    box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
 }
 
 .log-entry .timestamp { color: var(--neon-purple); }

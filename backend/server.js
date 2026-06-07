@@ -36,7 +36,11 @@ app.post('/api/translate', async (req, res) => {
         }
     } catch (error) {
         console.error('[Neural Link Error]', error.message);
-        if (error.code === 'ECONNABORTED') {
+        if (error.response && error.response.data && error.response.data.responseDetails) {
+            res.status(error.response.status || 500).json({ error: error.response.data.responseDetails });
+        } else if (error.response) {
+            res.status(error.response.status || 500).json({ error: `MyMemory API Error: ${error.response.statusText || error.message}` });
+        } else if (error.code === 'ECONNABORTED') {
             res.status(504).json({ error: 'Translation timeout. Neural link congested.' });
         } else {
             res.status(500).json({ error: 'Neural processing failure. Check connection.' });
