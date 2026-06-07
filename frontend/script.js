@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // API Configuration - Works for both local and production
-    const API_BASE_URL = window.location.hostname === 'localhost' 
+    const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
         ? 'http://localhost:5001' 
         : 'https://language-translator-backend-5ram.onrender.com';
     
@@ -90,8 +90,20 @@ document.addEventListener('DOMContentLoaded', () => {
     sourceText.addEventListener('input', () => {
         const count = sourceText.value.length;
         charCountDisplay.textContent = count;
+        
+        if (count >= 900) {
+            charCountDisplay.classList.add('limit-warning');
+        } else {
+            charCountDisplay.classList.remove('limit-warning');
+        }
+        
         if (count > 0) {
             debouncedTranslate();
+        } else {
+            targetText.innerHTML = '<span class="cursor-blink">_</span>';
+            updateSystemStatus('CORE ACTIVE', '#00f2ff');
+            translationStatus.textContent = 'IDLE';
+            translationStatus.style.color = 'var(--text-dim)';
         }
     });
 
@@ -205,7 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSystemStatus('SYSTEM ERROR', '#ff003c');
             translationStatus.textContent = 'ERROR';
             translationStatus.style.color = '#ff003c';
-            targetText.innerHTML = `<span style="color: #ff003c">ERROR: ${error.message.toUpperCase()}</span>`;
+            
+            let displayMsg = error.message;
+            if (error.name === 'TypeError' || error.message.includes('fetch')) {
+                displayMsg = 'BACKEND OFFLINE. CORE TRANSLATION SERVICE UNREACHABLE.';
+            }
+            targetText.innerHTML = `<span style="color: #ff003c">ERROR: ${displayMsg.toUpperCase()}</span>`;
         } finally {
             isProcessing = false;
             translateBtn.style.opacity = '1';
@@ -227,26 +244,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Terminal History Logs
     let translationHistory = JSON.parse(localStorage.getItem('translationHistory')) || [];
+    // Initialize session logs with persistent translation history
+    let allSessionLogs = [...translationHistory];
 
     function renderHistory() {
         const historyContainer = document.getElementById('history-list');
         historyContainer.innerHTML = '';
         
-        translationHistory.forEach(log => {
+        allSessionLogs.forEach(log => {
             const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `
-                <span class="timestamp">[${log.timestamp}]</span>
-                <span class="cmd">${log.sLang.split('-')[0]}>${log.tLang.split('-')[0]}</span>
-                <span class="content">${log.source.substring(0, 20)}${log.source.length > 20 ? '...' : ''}</span>
-            `;
             
-            entry.onclick = () => {
-                sourceText.value = log.source;
-                sourceLang.value = log.sLang;
-                targetLang.value = log.tLang;
-                translate();
-            };
+            // Check if it's a translation log (both sLang and tLang are valid lang codes)
+            const isTranslation = ['en-GB', 'hi-IN', 'de-DE'].includes(log.sLang) && 
+                                  ['en-GB', 'hi-IN', 'de-DE'].includes(log.tLang);
+            
+            if (isTranslation) {
+                entry.className = 'log-entry interactive-log';
+                entry.innerHTML = `
+                    <span class="timestamp">[${log.timestamp}]</span>
+                    <span class="cmd">${log.sLang.split('-')[0]}>${log.tLang.split('-')[0]}</span>
+                    <span class="content">${log.source.substring(0, 20)}${log.source.length > 20 ? '...' : ''}</span>
+                `;
+                
+                entry.onclick = () => {
+                    sourceText.value = log.source;
+                    sourceLang.value = log.sLang;
+                    targetLang.value = log.tLang;
+                    sourceText.dispatchEvent(new Event('input'));
+                    translate();
+                };
+            } else {
+                const isError = log.tLang === 'ERR';
+                entry.className = `log-entry system-log ${isError ? 'error-log' : ''}`;
+                entry.innerHTML = `
+                    <span class="timestamp">[${log.timestamp}]</span>
+                    <span class="cmd">${log.sLang}>${log.tLang}</span>
+                    <span class="content">${log.source}</span>
+                `;
+            }
 
             historyContainer.prepend(entry);
         });
@@ -255,13 +290,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function addLogEntry(source, target, sLang, tLang) {
         const timestamp = new Date().toLocaleTimeString([], { hour12: false });
         
-        translationHistory.push({ timestamp, source, target, sLang, tLang });
+        const isTranslation = ['en-GB', 'hi-IN', 'de-DE'].includes(sLang) && 
+                              ['en-GB', 'hi-IN', 'de-DE'].includes(tLang);
         
-        if (translationHistory.length > 10) {
-            translationHistory.shift();
+        const logItem = { timestamp, source, target, sLang, tLang };
+        
+        if (isTranslation) {
+            // Add to persistent translation history
+            translationHistory.push(logItem);
+            if (translationHistory.length > 10) {
+                translationHistory.shift();
+            }
+            localStorage.setItem('translationHistory', JSON.stringify(translationHistory));
         }
         
-        localStorage.setItem('translationHistory', JSON.stringify(translationHistory));
+        // Add to runtime session logs
+        allSessionLogs.push(logItem);
+        if (allSessionLogs.length > 20) {
+            allSessionLogs.shift();
+        }
+        
         renderHistory();
     }
 

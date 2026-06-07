@@ -470,20 +470,54 @@ textarea, .output-display {
     margin-bottom: 0.75rem;
     display: flex;
     gap: 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    transition: all 0.2s ease;
 }
 
-.log-entry:hover {
+/* Only interactive logs have pointer cursor and hover effects */
+.log-entry.interactive-log {
+    cursor: pointer;
+}
+
+.log-entry.interactive-log:hover {
     background: rgba(0, 242, 255, 0.08);
     box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
+}
+
+/* System and error logs styling */
+.log-entry.system-log {
+    opacity: 0.8;
+}
+
+.log-entry.system-log .cmd {
+    color: var(--neon-purple);
+}
+
+.log-entry.system-log .content {
+    color: var(--text-dim);
+}
+
+.log-entry.system-log.error-log .cmd {
+    color: var(--neon-red) !important;
+}
+
+.log-entry.system-log.error-log .content {
+    color: var(--neon-red) !important;
+    opacity: 0.9;
 }
 
 .log-entry .timestamp { color: var(--neon-purple); }
 .log-entry .cmd { color: var(--neon-cyan); }
 .log-entry .content { color: var(--text-white); }
+
+/* Character limit warning */
+#char-count.limit-warning {
+    color: var(--neon-red);
+    text-shadow: 0 0 8px var(--neon-red);
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
 
 /* System Footer */
 .system-footer {
