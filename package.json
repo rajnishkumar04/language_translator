@@ -6,7 +6,8 @@
     "start": "cd backend && npm start",
     "start:backend": "cd backend && npm run start:dev",
     "start:frontend": "cd frontend && npx serve .",
-    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "postinstall": "cd backend && npm install"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
